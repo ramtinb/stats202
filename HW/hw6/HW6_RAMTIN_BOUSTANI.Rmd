@@ -1,0 +1,348 @@
+---
+title: "HW6"
+author: "Ramtin Boustani - SUID# 05999261"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Problem 1
+**Chapter 7, Exercise 2**    
+
+### (a)    
+$\hat{g} = 0$  (zero)           
+
+### (b)    
+$\hat{g} = c$  (constant)          
+First derivative measures the slope and larger lambda causes get close to constant.    
+
+### (c)    
+$\hat{g} = ax+b$  (linear)         
+Second derivative peaks wiggle of the function also the penalty term captures all non-linearly in the function.
+Smallest lambda more wiggly function and  larger lambda causes more linear function
+
+### (d)    
+$\hat{g} = ax^2 + bx + c$  (cubic)         
+
+### (e)    
+Simple minimizing RSS. There is no penality so it is interpolating spline. (Overfit data and too flexible)    
+
+# Problem 2
+**Chapter 7, Exercise 8**    
+```{r results='hide', message=FALSE, warning=FALSE} 
+require(ISLR)
+require(boot)
+require(splines)
+require(gam)
+attach(Auto)
+set.seed(1)
+pairs(Auto)
+```
+
+### mpg relationship with displacement
+
+#### Polynomial
+Using 10 folds cross validations     
+```{r}
+set.seed(1)
+errors = rep(NA, 15)
+for (d in 1:15){
+  fit = glm(mpg ~poly(displacement, d), data=Auto)
+  errors[d] = cv.glm(Auto, fit, K=10)$delta[2]
+}
+which.min(errors)
+errors[which.min(errors)]
+```
+Polynomial degree 10th with test error 17.48
+
+#### Fixed knots regression Splines
+```{r}
+set.seed(1)
+errors = rep(NA, 10)
+for (d in 2:10){
+  fit = glm(mpg ~ ns(displacement, df=d), data = Auto)
+  errors[d] = cv.glm(Auto, fit, K=10)$delta[2]
+}
+which.min(errors)
+errors[which.min(errors)]
+```
+Splines with 9 degree of freedom with test error 17.61
+
+#### Linear regression    
+```{r}
+glm.fit = glm(mpg ~ displacement, data = Auto)
+cv.glm(glm.fit,data = Auto)$delta[2]
+```
+
+#### Conclusion          
+Comparing mpg ~ displacement      
+                 Linear: 21.59218     
+Polynomial(degree 10th): 17.48    
+       Splines(df=9): 17.61    
+Shows nonlinear modeles have lower test error!    
+```{r}
+fit = glm(mpg ~poly(displacement, 10), data=Auto)
+grid = seq(range(displacement)[1],range(displacement)[2], 0.1)
+plot(predict(fit, list(displacement =  grid )))
+
+```
+
+
+### mpg relationship with weight
+
+#### Polynomial
+Using 10 folds cross validations     
+```{r}
+set.seed(1)
+errors = rep(NA, 15)
+for (d in 1:15){
+  fit = glm(mpg ~poly(weight, d), data=Auto)
+  errors[d] = cv.glm(Auto, fit, K=10)$delta[2]
+}
+which.min(errors)
+errors[which.min(errors)]
+```
+Quadratic with test error 17.55
+
+#### Fixed knots regression Splines
+```{r}
+set.seed(1)
+errors = rep(NA, 10)
+for (d in 2:10){
+  fit = glm(mpg ~ ns(weight, df=d), data = Auto)
+  errors[d] = cv.glm(Auto, fit, K=10)$delta[2]
+}
+which.min(errors)
+errors[which.min(errors)]
+```
+Splines with 10 degree of freedom with test error 17.37
+
+#### Linear regression    
+```{r}
+glm.fit = glm(mpg ~ weight, data = Auto)
+cv.glm(glm.fit,data = Auto)$delta[2]
+```
+
+#### Conclusion          
+Comparing mpg ~ weight      
+                 Linear: 18.85      
+Polynomial(degree 2th): 17.55       
+         Splines(df=10): 17.37              
+Nonlinear slightly better than linear model        
+```{r}
+fit = glm(mpg ~poly(weight, 2), data=Auto)
+grid = seq(range(weight)[1],range(weight)[2], 0.1)
+plot(predict(fit, list(weight =  grid )))
+```
+
+
+# Problem 3
+**Chapter 7, Exercise 9**    
+```{r}
+require(MASS)
+attach(Boston)
+```
+
+### (a)     
+Cubic polynomial regression    
+```{r}
+lm.fit = glm(nox~poly(dis, 3), data=Boston)
+dis.grid = seq(from=Boston$dis[which.min(Boston$dis)], to=Boston$dis[which.max(Boston$dis)], by=0.1)
+lm.pred = predict(lm.fit, list(dis = dis.grid))
+plot(y=nox, x=dis)
+lines(dis.grid, lm.pred, col="red")
+```
+
+### (b)     
+Training RSS from degree 1 to 10
+```{r}
+rss = rep(NA, 10)
+for (d in 1:10){
+  fit = glm(nox~poly(dis, d), data=Boston)
+  rss[d] = sum(fit$residuals^2)
+}
+plot(rss, type="line")
+```
+       
+Training error RSS monotonically decrease with increasing degree of polynomial   
+
+### (c)    
+Cross-validation     
+```{r}
+set.seed(1)
+errors = rep(NA, 10)
+for (d in 1:10){
+  fit = glm(nox ~poly(dis, d), data=Boston)
+  errors[d] = cv.glm(Boston, fit, K=10)$delta[2]
+}
+plot(1:10, errors, type="line")
+points(x=which.min(errors), y=errors[which.min(errors)], col="red")
+```
+       
+Based on CV test error, 4 is a good ploynomial degree      
+
+### (d)     
+
+```{r}
+range(dis)
+```
+range between 1 to 13 splitting 4 equal intervals and providing as knots          
+
+```{r}
+lm.fit = glm(nox~bs(dis,knots = c(4,7,11)), data=Boston)
+dis.grid = seq(from=Boston$dis[which.min(Boston$dis)], to=Boston$dis[which.max(Boston$dis)], by=0.1)
+lm.pred = predict(lm.fit, list(dis = dis.grid))
+plot(y=nox, x=dis)
+lines(dis.grid, lm.pred, col="red", lwd=2)
+abline(v=4, col="grey", lty="dashed")
+abline(v=7, col="grey", lty="dashed")
+abline(v=11, col="grey", lty="dashed")
+```
+
+### (e)     
+```{r results='hide', message=FALSE, warning=FALSE}
+cv = rep(NA, 20)
+for(d in 1:20){
+  fit = lm(nox ~ bs(dis, df = d), data = Boston)
+  cv[d] = sum((fit$residuals)^2)
+}
+plot(1:20, cv, type = "line")
+points(x=which.min(cv), y=cv[which.min(cv)], col="red")
+```
+
+### (f)     
+```{r results='hide', message=FALSE, warning=FALSE}
+set.seed(1)
+errors = rep(NA, 20)
+for(d in 1:20){
+  fit = glm(nox ~ bs(dis, df = d), data = Boston)
+  errors[d] = cv.glm(data = Boston, glmfit = fit, K=10)$delta[2]
+}
+plot(1:20, errors, type = "line")
+points(x=which.min(errors), y=errors[which.min(errors)], col="red")
+```
+      
+10 is good degree of freedom for regression spline     
+
+# Problem 4
+**Chapter 7, Exercise 10**   
+```{r results='hide', message=FALSE, warning=FALSE}
+require(leaps)
+attach(College)
+set.seed(1)
+```
+
+### (a)     
+
+```{r}
+n = dim(College)[1]
+train = sample(n, n/2, replace=FALSE)
+reg.fit = regsubsets(Outstate~. ,data = College[train,], nvmax=17, method = "forward" )
+reg.summary = summary(reg.fit)
+par(mfrow = c(1, 2))
+plot(reg.summary$adjr2, type = "line", main = "adjr2",xlab = "Number of Variables")
+abline(v=6, col="grey")
+plot(reg.summary$bic, type = "line", main="bic", xlab = "Number of Variables")
+abline(v=6, col="grey")
+```
+6 is a good number of variables for this model, we train again with full data to find variable names     
+```{r}
+reg.fit = regsubsets(Outstate ~ ., data = College, method = "forward")
+names(coef(reg.fit, id=6))
+```
+
+### (b)     
+```{r}
+set.seed(1)
+gam.fit = gam(Outstate ~ Private + s(Room.Board, 3) + s(PhD, 3) + s(perc.alumni, 3) + s(Expend, 3) + s(Grad.Rate, 3), data=College[train,])
+par(mfrow=c(2,3))
+plot(gam.fit, se = TRUE, col="red")
+```
+
+### (c)     
+
+```{r}
+lm.fit = lm(Outstate ~Private+Room.Board+PhD+perc.alumni+Expend+Grad.Rate, data = College[train,])
+lm.pred = predict(lm.fit, newdata = College[-train,])
+mean((College[-train,]$Outstate - lm.pred)^2)
+```
+```{r}
+set.seed(1)
+gam.pred = predict(gam.fit, newdata = College[-train,])
+mean((College[-train,]$Outstate - gam.pred)^2)
+```
+Comparing linear list sqaure with GAM shows GAM has slightly lower RSS     
+
+### (d)     
+```{r}
+summary(gam.fit)
+```
+Anova for Nonparametric Effects shows strong relation between OutState and Expend
+
+# Problem 5
+**Chapter 7, Exercise 11**    
+
+### (a)     
+```{r}
+set.seed(1)
+X1 = rnorm(100,1)
+X2 = rnorm(100,1)
+eps = rnorm(100,0.1)
+b0 = 3
+b1 = 5
+b2 = -1
+Y = b0 + b1*X1 + b2*X2 + eps
+```
+
+### (b)     
+```{r}
+beta0 = rep(NA,1000)
+beta1 = rep(NA,1000)
+beta2 = rep(NA,1000)
+```
+
+### (c)  (d)  (e)       
+```{r}
+beta1[1] = 5
+for (i in 1:1000){
+  #fixing beta1
+  a = Y - beta1[i]*X1
+  lm.fit = lm(a~X2)
+  beta2[i] = lm.fit$coefficients[2]
+  
+  #fixing beta2
+  a = Y - beta2[i]*X2
+  lm.fit = lm(a~X1)
+  beta1[i+1] = lm.fit$coefficients[2]
+  
+  beta0[i] = lm.fit$coefficients[1]
+}
+
+plot(1:1000, beta0, type = "line", col="green",  ylim = c(-2, 6))
+lines(1:1001, beta1, col="red")
+lines(1:1000, beta2, col="blue")
+legend("center", c("beta0", "beta1", "beta2"), lty = 1, col = c("green", "red", "blue"))
+```
+
+### (f)     
+```{r}
+lm.fit = lm(Y~X1+X2)
+lm.fit$coefficients
+
+plot(1:1000, beta0, type = "line", col="green",  ylim = c(-2, 6))
+lines(1:1001, beta1, col="red")
+lines(1:1000, beta2, col="blue")
+
+
+abline(h = lm.fit$coefficients[1], lty = "dashed", lwd = 3, col = "grey")
+abline(h = lm.fit$coefficients[2], lty = "dashed", lwd = 3, col = "grey")
+abline(h = lm.fit$coefficients[3], lty = "dashed", lwd = 3, col = "grey")
+
+
+legend("center", c("beta0", "beta1", "beta2", "multiple linear regression"), lty = 1, col = c("green", "red", "blue","grey"))
+```
+
+### (g)     
+After one backfitting iteration coefficients have not changed
+
+      

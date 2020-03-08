@@ -1,0 +1,379 @@
+---
+title: "HW7"
+author: "Ramtin Boustani - SUID# 05999261"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Problem 1
+**Chapter 8, Exercise 4**    
+
+### (a)  
+![](/Users/rboustan/Documents/Stat202/MySolutions/hw7/4a.JPG)    
+
+### (b)   
+![](/Users/rboustan/Documents/Stat202/MySolutions/hw7/4b.JPG)    
+      
+# Problem 2
+**Chapter 8, Exercise 8**    
+
+```{r}
+require(tree)
+require(ISLR)
+attach(Carseats)
+```
+
+### (a)   
+```{r}
+set.seed(1)
+train = sample(nrow(Carseats), nrow(Carseats)/2)
+```   
+
+### (b)   
+```{r}
+tree.carseats = tree(Sales ~., data = Carseats[train,])
+summary(tree.carseats)
+```
+```{r}
+plot(tree.carseats)
+text(tree.carseats, pretty = 0)
+```
+```{r}
+tree.pred = predict(tree.carseats, newdata = Carseats[-train,])
+tree.err = with(Carseats[-train,],  mean((Sales-tree.pred)^2))
+tree.err
+```
+test MSE = 4.92     
+
+### (c)   
+```{r}
+set.seed(1)
+cv.carseats = cv.tree(tree.carseats, FUN = prune.tree)
+plot(cv.carseats)
+```
+      
+pruning tree at size 10 is good      
+
+```{r}
+prune.carseats = prune.tree(tree.carseats, best = 10)
+plot(prune.carseats)
+text(prune.carseats)
+```
+
+```{r}
+prune.predicts = predict(prune.carseats, newdata = Carseats[-train,])
+prune.err =  with(Carseats[-train,], mean((Sales - prune.predicts)^2))
+prune.err
+```
+test MSE pruning tree at size 10 with CV is 4.91     
+In this case not much difference between back pruning using CV and simple regression     
+
+### (d)   
+```{r}
+require(randomForest)
+bag.carseats = randomForest(Sales ~., data = Carseats, subset = train, mtry=10, ntree=1000, importance=TRUE)
+bag.predict = predict(bag.carseats, Carseats[-train,])
+importance(bag.carseats)
+mean((Carseats[-train,"Sales"]-bag.predict)^2)
+```
+Bagging test MSE is 2.58 which improves a lot compare to back tree pruning using CV      
+Price, ShelveLoc, CompPrice and Age are important predictors for Sale.      
+
+```{r}
+varImpPlot(bag.carseats)
+```
+
+### (e)   
+```{r}
+test.err = double(10)
+for (mtry in 1:10){
+  fit = randomForest(Sales ~., data = Carseats, subset = train, mtry=mtry, ntree=1000, importance=TRUE)
+  obb.err = fit$mse[1000]
+  pred = predict(fit, Carseats[-train,])
+  test.err[mtry] = with(Carseats[-train,], mean((Sales-pred)^2))
+}
+plot(test.err, type = "b")
+points(y=test.err[which.min(test.err)], x=which.min(test.err), col="yellow", pch=20)
+points(y=test.err[4], x=4, col="red", pch=20)
+```
+
+
+```{r}
+rf.carseats = randomForest(Sales ~., data = Carseats, subset = train, mtry=4, ntree=1000, importance=TRUE)
+varImpPlot(rf.carseats)
+```
+
+```{r}
+importance(rf.carseats)
+```
+
+Price and ShelveLoc are the most important predictors    
+
+```{r}
+test.err[4]
+```
+test MSE for randforest is 2.82          
+
+# Problem 3
+**Chapter 8, Exercise 10**    
+```{r}
+require(gbm)
+require(glmnet)
+attach(Hitters)
+```
+
+### (a)   
+```{r}
+nrow(Hitters)
+Hitters = Hitters[-which(is.na(Hitters$Salary)),]
+nrow(Hitters)
+Hitters$Salary = log(Hitters$Salary)
+```
+
+### (b)   
+```{r}
+train = sample(nrow(Hitters), nrow(Hitters)/2)
+```
+
+### (c)  and (d) 
+```{r}
+lambdas = 10^ (seq(from=-10, to=-0.1, by=0.1))
+train.err = rep(NA, length(lambdas))
+test.err = rep(NA, length(lambdas))
+for (l in 1:length(lambdas)){
+  boost.hitters = gbm(Salary ~., data=Hitters[train,], distribution="gaussian", n.trees = 1000, shrinkage=lambdas[l], interaction.depth = 1)
+  train.pred = predict(boost.hitters, Hitters[train,], n.trees = 1000)
+  test.pred = predict(boost.hitters, Hitters[-train,], n.trees = 1000)
+  train.err[l] = with(Hitters[train,], mean((Salary-train.pred)^2))
+  test.err[l] = with(Hitters[-train,], mean((Salary-test.pred)^2))
+}
+ matplot(lambdas, cbind(test.err,train.err ), pch=19, col=c("red","blue"), type="b" )
+ minTest = lambdas[which.min(test.err)]
+ mintTrain = lambdas[which.min(train.err)]
+ legend("topright", legend = c("test","train"), col=c("red","blue"), pch=19)
+```
+```{r}
+cat("Test error ", min(test.err))     
+cat("\n")
+cat("lambda for Test error ", lambdas[which.min(test.err)])     
+```
+
+### (e)   
+```{r}
+lm.fit =  lm(Salary ~., data=Hitters[train,])
+lm.pred = predict(lm.fit, Hitters[-train,])
+lm.err = mean((Hitters[-train,"Salary"]-lm.pred)^2)
+lm.err
+```
+Linear regression test MSE is 0.48   
+
+```{r}
+x.train = model.matrix(Salary ~. , data = Hitters[train,])
+y = Hitters[train, "Salary"]
+x.test = model.matrix(Salary ~. , data = Hitters[-train,])
+lasso.fit = glmnet(x.train, y)
+lasso.pred = predict(lasso.fit, newx = x.test)
+lasso.err = mean((Hitters[-train,"Salary"]-lasso.pred)^2)
+lasso.err
+```
+lasso test MSE is 0.48     
+
+comparing with Boosting that has much lower test MSE 0.30    
+
+### (f)   
+```{r}
+boost.fit = gbm(Salary~., data=Hitters[train,], distribution = "gaussian", n.trees = 1000, shrinkage = lambdas[which.min(test.err)])
+summary(boost.fit)
+```
+
+### (g)   
+```{r}
+rf.hitters =  randomForest(Salary~., data = Hitters[train,], ntree=500, mtry=19)
+rf.pred = predict(rf.hitters, Hitters[-train,])
+mean((Hitters[-train, "Salary"] - rf.pred)^2)
+```
+
+Bagging test MSE is 0.31     
+Very close to boosting 0.30    
+
+
+# Problem 4
+**Chapter 9, Exercise 4**    
+```{r}
+require(e1071)
+set.seed(1)
+x = rnorm(100, 0, 1)
+epsilon = rnorm(100, 0, 1)
+beta1= 4
+degree = 2
+classDiff = 3
+y = beta1*(x^degree) + 1 + epsilon
+class = sample(100, 50)
+y[class] = y[class] + classDiff
+y[-class] = y[-class] - classDiff
+plot(x[class], y[class], col="red", xlab = "X", ylab = "Y", ylim = c(-10, 30))
+points(x[-class], y[-class], col="blue")
+```
+      
+### polynomial on linear       
+```{r}
+cst = c(0.01, 0.1, 1, 5, 10, 100, 1000)
+label = rep(-1, 100)
+label[class] = 1
+data = data.frame(x=x, y=y, label=as.factor(label))
+
+best.tune(svm, label~. , data=data[train,], kernel="linear")
+```
+```{r}
+svm.linear = svm(label~., data=data[train,], kernel="linear", cost=1)
+plot(svm.linear, data[train,])
+```
+
+### polynomial on training       
+```{r}
+best.tune(svm, label~. , data=data[train,], kernel="polynomial")
+```
+
+```{r}
+svm.poly = svm(label~., data=data[train,], kernel="polynomial", degree=3, cost=1)
+plot(svm.poly, data[train,])
+```
+
+### radial on training    
+```{r}
+best.tune(svm, label~. , data=data[train,], kernel="radial")
+```
+
+```{r}
+svm.radial = svm(label~., data=data[train,], kernel="radial", cost=1)
+plot(svm.radial, data[train,])
+```
+     
+### comparing prediction on test results    
+```{r}
+
+cat("\npoly")
+table(label[-train], predict(svm.poly, data[-train,]))
+(1 - ((23+6)/(23+6+24+1)))*100
+
+cat("\nlinear")
+table(label[-train], predict(svm.linear, data[-train,]))
+(1 - ((18+29)/(18+29+6+1)))*100
+
+cat("\nradial")
+table(label[-train], predict(svm.radial, data[-train,]))
+(1 - (20+30)/(20+30+0+4))*100
+```
+Radial is better than linear, and linear is better than polynomial degree 3    
+
+# Problem 5
+**Chapter 9, Exercise 7**    
+
+### (a)    
+```{r}
+require(ISLR)
+require(e1071)
+attach(Auto)
+y =ifelse(Auto$mpg> mean(Auto$mpg), 1 , 0)
+Auto$mpglevel = as.factor(y)
+cst = c(0.01, 0.1, 1, 5, 10, 100, 1000)
+set.seed(1)
+```
+
+### (b)    
+```{r}
+set.seed(1)
+tune.out = tune(svm, mpglevel~. , data=Auto, kernel="linear", ranges = list(cost = cst))
+tune.out$best.parameters
+tune.out$best.performance
+```
+For linear kernel cost 1 has been chosen with lowest 0.0076 cost     
+
+### (c)    
+```{r}
+set.seed(1)
+tune.out = tune(svm, mpglevel~. , data=Auto, kernel="polynomial", ranges = list(cost = cst), degree = c(2, 3, 4))
+tune.out$best.parameters
+tune.out$best.performance
+```
+For polynomial kernel cost 1000 has been chosen with lowest 0.21 cost     
+
+```{r}
+set.seed(1)
+tune.out = tune(svm, mpglevel~. , data=Auto, kernel="radial", ranges = list(cost = cst), gama = c(0.01, 0.1, 1, 5, 10, 100))
+tune.out$best.parameters
+tune.out$best.performance
+```
+For radial kernel cost 1000 has been chosen with lowest 0.0076 cost     
+
+# Problem 6
+
+```{r}
+library(kernlab)
+set.seed(1)
+
+data(reuters)
+y = rlabels
+x = reuters
+
+train = sample(40,20)
+
+#Spectrum kernel
+len = c(2:7)
+err.spectrum = rep(NA,6)
+for (l in len){
+  sk = stringdot(type="spectrum", length=l, normalized=TRUE)
+  svp = ksvm(x[train], y[train], kernel=sk, scale=c(), cross=5)
+  err.spectrum[l-1] = cross(svp)
+}
+which.min(err.spectrum)+1
+```
+spectrum with length 3 has the lowest error   
+
+
+```{r}
+sk = stringdot(type="spectrum", length=3, normalized=TRUE)
+svp = ksvm(x[train], y[train], kernel=sk, scale=c(), cross=5)
+pred = predict(svp, x[-train])
+table(pred, y[-train])
+```
+
+Prediction Spectrum with length 3! 2 errors, 10% !     
+
+```{r}
+#gappy kernel
+#sgk = gapweightkernel(length=2,lambda=0.1,normalized=TRUE,use_characters=TRUE)
+#problem in stringkernels so using pre-computed kernel matrices
+#ker.len = read.csv(paste"/Users/rboustan/Documents/Stat202/MySolutions/hw7/matrices/len2lam0.1.csv")
+
+len = c(2:7)
+err.gappy = rep(NA,6)
+for (l in len){
+  ker = read.csv(paste("/Users/rboustan/Documents/Stat202/MySolutions/hw7/matrices/len", l,"lam0.1.csv", sep = ""))
+  ker = as.kernelMatrix(as.matrix(ker))
+  svp = ksvm(x=ker[train,-1],y=rlabels[train],cross=5)
+  err.gappy[l-1] = cross(svp)
+}
+which.min(err.gappy)+1
+```
+gappy with length 4 has the lowest error     
+
+```{r}
+ker = read.csv(paste("/Users/rboustan/Documents/Stat202/MySolutions/hw7/matrices/len4lam0.1.csv", sep = ""))
+ker = as.kernelMatrix(as.matrix(ker))
+svp = ksvm(x=ker[train,-1],y=rlabels[train],cross=5)
+pred = predict(svp, ker[-train,-1])
+table(pred, y[-train])
+```
+Prediction gappy with length 4! 1 error, 5% !       
+So gappy with length 4 is slightly better than Spectrum with length 3!      
+
+```{r}
+plot(x=len, y=err.spectrum, type="b" , col="2", ylim=c(0,0.6), xlim=c(2,7), ylab="cross validation errors", xlab="length")
+points(x=len, y=err.gappy, col="3", type = "b")
+legend("topright",legend=c("err.spectrum", "err.gappy"), col=c(2,3), pch=10)
+```
+
+
+

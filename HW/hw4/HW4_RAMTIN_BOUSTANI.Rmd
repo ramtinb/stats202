@@ -1,0 +1,340 @@
+---
+title: "HW4"
+author: "Ramtin Boustani - SUID# 05999261"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Problem 1
+**Chapter 5, Exercise 3**
+
+### (a)
+let's say k=10 then for 10-fold cross-validation we randomly divide the entire observation to 10 sets of size n/10. Then we do 10 times training data with 9 folds and estimate error using remaining one set and averaging the 10 MSE.    
+```{r results="hide"}
+k = 10
+data = data.frame(seq(1:100))
+n = nrow(data)
+
+#randomly shuffle data
+data = data.frame(data[sample(n,),])
+
+errors = c()
+k_counter = k-1
+for (i in c(0:k_counter)){
+  
+  #training indexes
+  current_fold = i*k
+  s = 0
+  e = current_fold
+  training = data[s:e,]
+  s = current_fold+k+1
+  e = n
+  training = c(training, data[s:e,])
+  
+  #test indexes
+  s = current_fold
+  e = current_fold+k
+  test = data[s:e,]
+
+  #call external function for training 
+
+  #call external function for test (MSE)
+  err = -1
+  errors = c(errors, err)
+}
+#averaging MSE
+mean(errors)
+
+```
+### (b)
+Validation set approach vs CV     
++ validation set approach is computationally simple    
++ validation set approach is easy to implement    
++ CV is less bias   
+- error estimate for validation set approach result is highly variable and dependent on set of observations   
+- validation set approach overestimates the test error because of using less data for training   
+
+LOOCV vs CV    
++ CV is computationally faster    
++ CV error rate estimate is better than LOOCV because of bias-variance trade-off     
+- LOOCV gives the most unbiased result but has more variance    
+
+
+# Problem 2
+**Chapter 5, Exercise 5**
+
+### (a)    
+```{r}
+library(ISLR)
+attach(Default)
+set.seed(1)
+glm.fit = glm(default ~income + balance, data = Default, family = binomial)
+summary(glm.fit)
+```
+
+### (b)   
+    
+#### (i)  
+Split observations
+```{r}
+n = dim(Default)[1]
+train = sample(n ,n/2, replace = FALSE)
+```
+
+#### (ii)    
+fit model using only training set    
+```{r}
+glm.fit = glm(default ~income + balance, data = Default, family = binomial, subset = train)
+```
+
+#### (iii)    
+Predict 
+```{r}
+glm.pred = rep( "No", n/2)
+glm.probs = predict(glm.fit, Default[-train,], type = "response")
+glm.pred[glm.probs>0.5] = "Yes"
+
+mean(glm.pred != Default[-train,]$default)
+
+```
+
+### (c)
+```{r}
+validationSet = function() {
+  n = dim(Default)[1]
+  train = sample(n ,n/2, replace = FALSE)
+  glm.fit = glm(default ~income + balance, data = Default, family = binomial, subset = train)
+  glm.pred = rep( "No", n/2)
+  glm.probs = predict(glm.fit, Default[-train,], type = "response")
+  glm.pred[glm.probs>0.5] = "Yes"
+  mean(glm.pred != Default[-train,]$default)
+}
+result = c()
+for(i in 1:5){
+  res = validationSet()
+  print(res)
+  result = c(res, result)
+}
+
+range(result)
+```
+As expected variability in response
+
+### (d)    
+```{r}
+train = sample(n ,n/2, replace = FALSE)
+glm.fit = glm(default ~income + balance + student, data = Default, family = binomial, subset = train)
+glm.probs = predict(glm.fit, Default[-train,] , type="response")
+glm.pred = rep('No',n/2)
+glm.pred[glm.probs>0.5] = 'Yes'
+mean(glm.pred!=Default[-train,]$default)
+
+```
+Close to the test errors without student, not much change
+
+# Problem 3
+**Chapter 5, Exercise 6**
+
+### (a)   
+```{r}
+set.seed(1)
+glm.fit = glm(default ~ income + balance, data = Default, family = binomial)
+summary(glm.fit)
+```
+
+### (b)   
+Computing statistics
+```{r}
+boot.fn = function(data, index){
+ glm.fit = glm( default ~ income + balance, data = data, family = binomial, subset = index )
+ coefficients(glm.fit)
+}
+```
+
+### (c)   
+Use bootstrap function
+```{r}
+library(boot)
+set.seed(1)
+boot.out = boot(Default, boot.fn, R=1000)
+boot.out
+```
+  
+
+### (d)   
+glm SE(home) = 4.985e-06     
+bootstrap SE(home) = 4.866284e-06       
+```{r}
+4.985e-06 - 4.866284e-06
+```
+
+glm SE(balance) =  2.274e-04     
+bootstrap SE(balance) = 2.298949e-04
+```{r}
+2.274e-04 - 2.298949e-04
+```
+very good estimate for standard error  
+
+# Problem 4
+**Chapter 5, Exercise 9**
+```{r}
+library(MASS)
+attach(Boston)
+n = nrow(Boston)
+```
+
+### (a)   
+```{r}
+crim.mean = mean(crim)
+crim.mean
+```
+
+### (b)   
+$\ SE\ of\ the\ mean =\frac{Standard Deviation}{ \sqrt(n)}$    
+```{r}
+crim.error = sd(crim) / sqrt(n)
+crim.error
+```
+
+### (c)   
+```{r}
+library(boot)
+set.seed(1)
+boot.fn = function(data, index){
+  mean(data[index])
+}
+boot.out = boot(crim, boot.fn, R=1000)
+boot.out 
+```
+
+Very close estimate between bootstrap and computing formula    
+```{r}
+crim.error -  0.3709464
+```
+
+### (d)   
+```{r}
+c(boot.out$t0 - (2*0.3709464), boot.out$t0 + (2 * 0.3709464))
+t.test(Boston$crim)
+```
+The t.test mean exist in the 95% confidence interval and bootstrap estimate is 0.01 different    
+
+### (e)   
+```{r}
+crim.median = median(crim)
+crim.median
+```
+
+### (f)   
+```{r}
+set.seed(1)
+boot.fn = function(data, index){
+  median(data[index])
+}
+boot.out = boot(crim, boot.fn, R=1000)
+boot.out
+```
+estimated median is the same as population median with small SE    
+
+### (g)   
+```{r}
+crim.quantile = quantile(crim, probs=c(0.1))
+crim.quantile
+```
+
+### (h)   
+```{r}
+set.seed(1)
+boot.fn = function(data, index){
+  quantile(data[index], probs = c(0.1))
+}
+boot.out = boot(crim, boot.fn, R=1000)
+boot.out
+```
+Small SE and the same tenth percentile     
+
+# Problem 5
+
+```{r}
+library(boot)
+library(ISLR)
+attach(USArrests)
+```
+### (1)   
+```{r}
+set.seed(1)
+boot.fn = function(data, index){
+  pr.out = prcomp(data[index,], scale = TRUE)
+  return (pr.out$rotation)
+}
+boot.out = boot(USArrests, boot.fn, R=1000)
+print("PCAs in 1000 Bootstrap of the data")
+boot.out$t0
+```
+Proportion of variance explained by PC1 and PC2
+```{r}
+var = apply(boot.out$t0, 2, sum)
+pve = var / sum(var)
+pve
+```
+```{r}
+plot(pve, xlab = "PCs" , type = "b")
+```
+
+### (2)    
+95% confidence interval for first principal component     
+```{r}
+set.seed(1)
+boot.fn = function(data, index){
+  pr.out = prcomp(data[index,], scale = TRUE)
+  return (abs(pr.out$rotation[,1]))
+}
+boot.out = boot(USArrests, boot.fn, R=1000)
+boot.ci(boot.out, type = c("bca"))
+```
+
+95% confidence interval for second principal component     
+```{r}
+set.seed(1)
+boot.fn = function(data, index){
+  pr.out = prcomp(data[index,], scale = TRUE)
+  return (abs(pr.out$rotation[,2]))
+}
+boot.out = boot(USArrests, boot.fn, R=1000)
+boot.ci(boot.out, type = c("bca"))
+```
+
+
+### (3)    
+The sign (+/-) of PCs are not important but causes the wrong result while averaging their values and endup with wrong range for standard error and confidence interval.      
+The following boxplot shows the problem:   
+```{r}
+boot.fn = function(data, index) {
+  pr.out = prcomp(data[index,], scale = TRUE )
+  abs(pr.out$rotation[,1])
+}
+boot.out = boot(USArrests, boot.fn, R=1000)
+boxplot(boot.out$t,use.cols = TRUE)
+```
+
+### (4)    
+```{r}
+boot.fn = function(data, index) {
+  pr.out = prcomp(data[index,], scale = TRUE )
+  pc1 = pr.out$rotation[,1]
+  pos = which(abs(pc1) == max(abs(pc1)))
+  pos.sign = sign(pc1[pos])
+  pc1 * pos.sign
+}
+```
+
+### (5)    
+```{r}
+boot.out = boot(USArrests, boot.fn, R=1000)
+boxplot(boot.out$t,use.cols = TRUE)
+```
+
+### (6)    
+The predicator that has the most variance won't change in all bootstrap samples so the function in part 4 tries to fix the sign issue for that predicator that has the highest scores in all samples.     
+Also we are trying to solve the problem only for the first principal component so that solution cannot be used to simultaneously fix other PCs sign issue.

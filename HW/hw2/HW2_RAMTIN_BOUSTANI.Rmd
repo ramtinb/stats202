@@ -1,0 +1,473 @@
+---
+title: "HW2"
+author: "Ramtin Boustani - SUID# 05999261"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+# Problem 1
+**Exercise 1 from section 10.7**
+
+### (a)
+For simiplicity ignoed $\sum_{}$
+
+$\ (x_{ij} - x_{i\hat{j}})^2$   
+$\ = ((x_{ij} - \overline{x_{kj}}) -  (x_{i\hat{j}} - \overline{x_{kj}}))^2$    
+$\ = ((x_{ij} - \overline{x_{kj}})^2 + (x_{i\hat{j}} - \overline{x_{kj}})^2 -2(x_{ij} - \overline{x_{kj}})(x_{i\hat{j}} - \overline{x_{kj}})  )$    
+If expanding the above statement and  assuming $\ (x_{ij})^2 =  (x_{i\hat{j}})^2$ we will we have the other side statement    
+$\ = 0 + 2(x_{ij} - \overline{x_{kj}})^2$
+
+### (b)
+Algorithm 10.1 is a iterative gready algorithm that converge to the local minimum. 
+In every step by assiging ponits to each cluster's centroid we are minmizing inside cluster variance and in genral decreasing distance between clusters.
+
+# Problem 2
+**Exercise 2 from section 10.7**
+
+### (a)
+```{r}
+C = matrix( c(0, 0.3, 0.4, 0.7,
+              0.3, 0, 0.5, 0.8,
+              0.4, 0.5, 0, 0.45,
+              0.7, 0.8, 0.45, 0),
+            nrow = 4, ncol = 4)
+d = as.dist(C)
+hc = hclust(d, method = "complete")
+plot(hc)
+```
+  
+### (b)
+```{r}
+hc = hclust(d, method = "single")
+plot(hc)
+```
+
+### (c)
+(1,2) --> cluster A   
+(3,4) --> clustet B
+  
+### (d)
+((1,2), 3) --> cluster A   
+(4)        --> clustet B
+
+### (e)
+Swapping columns 1 & 2   
+Swapping columns 3 & 4   
+```{r}
+C2 = matrix(c(C[,2], C[,1], C[,4], C[,3]), nrow = 4, ncol = 4, byrow = FALSE)
+d = as.dist(C2)
+hc = hclust(d, method = "complete")
+plot(hc, labels=c(2,1,4,3))
+```
+
+
+# Problem 3
+**Exercise 9 from section 10.7**
+
+### (a)
+```{r}
+d = dist(USArrests, method = "euclidean")
+hc.complete = hclust(d, method = "complete")
+plot(hc.complete)
+```
+
+
+### (b)
+```{r}
+cutree(hc.complete, k=3)
+```
+
+
+### (c)
+```{r}
+d.scale = dist(scale(USArrests), method = "euclidean")
+hc.complete.scale = hclust(d.scale, method = "complete")
+plot(hc.complete.scale)
+```
+
+
+### (d)
+Since UrbanPop column has a different unit with other columns, scaling variables is a good idea to standardizing data. After scaling the height changed from 300 to 60 and states that have been clustered together also changed!
+
+
+# Problem 4
+**Exercise 10 from section 10.7 **
+
+### (a)
+```{r}
+set.seed(101)
+x = matrix(rnorm(60*50, mean=0, sd=0.1), 60,50)
+x[1:20,1]=1+x[1:20,1]
+x[1:20,2]=1+x[1:20,2]
+x[21:40,1]=3+x[21:40,1]
+x[21:40,2]=3+x[21:40,2]
+x[41:60,1]=5+x[41:60,1]
+x[41:60,2]=5+x[41:60,2]
+plot(x[,1],x[,2])
+true.labels <- c(rep(1, 20), rep(2, 20), rep(3, 20))
+```
+
+### (b)
+```{r}
+pr.out = prcomp(x)
+plot(pr.out$x[,1:2], col = 1:3, xlab = "Z1", ylab = "Z2", pch=20)
+```
+
+### (c)
+```{r}
+km.out=kmeans(x,3, nstart=20)
+table(true.labels, km.out$cluster)
+```
+
+### (d)
+```{r}
+km.out=kmeans(x,2, nstart=20)
+km.out$cluster
+table(true.labels, km.out$cluster)
+```
+clusters of 2 & 3 are merged!   
+
+### (e)
+```{r}
+km.out=kmeans(x,4, nstart=20)
+km.out$cluster
+```
+```{r}
+plot(x[,1:2], col= km.out$cluster, pch=20)
+```
+    
+Cluster 1 splitted in 2 clusters of 1 & 4
+
+### (f)
+```{r}
+km.out = kmeans(pr.out$x[,1:2], 3, nstart = 20)
+table(true.labels, km.out$cluster)
+```
+```{r}
+plot(x[,1:2], col= km.out$cluster, pch=20)
+```
+
+### (g)
+```{r}
+km.out = kmeans(scale(x) , 3, nstart = 20)
+table(true.labels, km.out$cluster)
+```
+
+```{r}
+plot(x[,1:2], col= km.out$cluster, pch=20)
+```
+    
+Not good clutering result due to minmizing distance between observations
+
+
+# Problem 5
+**Exercise 4 from section 3.7**
+
+### (a)
+Cubic regression has a lower traing RSS because it has more parameters to fit the line
+
+### (b)
+Linear regression has a lower testing RSS because cubic regression has overfit issue using training data
+
+### (c)
+Cubic regression has a lower traing RSS (same to (a)) because it has more parameter can can fit the line better
+
+### (d)
+Not enough inforamtion it really depends on true relation betwen Xs and Y.
+
+# Problem 6
+**Exercise 9, parts (a)-(d) only**
+
+```{r setup, include=TRUE}
+install.packages("ISLR", repos = "http://cran.us.r-project.org")
+library(ISLR)
+auto = ISLR::Auto
+```
+
+### (a)
+```{r}
+pairs(auto)
+```
+
+
+### ba)
+```{r}
+cor(auto[0:8])
+```
+
+
+### (c)
+*mpg ~ .* mpg is Y and . means all columns
+*-name* : means remove name from data
+```{r}
+result = lm( formula = mpg ~ . -name , data=auto)
+summary(result)
+```
+#### i.
+$\ H_{0}$  = all parameters are zero   
+Big F-statistic and small p-value are showing null hypothesis is not correct so there is relationship
+
+#### ii.
+Significant relationship: year, weight, origin, displacement 
+Weak relationship:  acceleration, cylinders, horsepower   
+
+#### iii.
+Increase of one year is an increase of 0.750773 in Y (mpg)
+
+### (d)
+```{r}
+plot(result)
+```
+
+
+# Problem 7
+**Exercise 14 from section 3.7**
+
+### (a)
+```{r}
+set.seed(1)
+x1=runif(100)
+x2=0.5*x1+rnorm(100)/10
+y =2+2*x1+0.3*x2+rnorm(100)
+```
+$\beta_{0}=2$   
+$\beta_{1}=2$   
+$\beta_{2}=0.3$   
+
+### (b)
+```{r}
+cor(x1,x2)
+```
+```{r}
+plot(x1,x2)
+```
+Linear correlation, X1 and X2 increases together
+
+### (c)
+```{r}
+lm.out = lm( formula = y ~ . ,data = as.data.frame(matrix(c(x1,x2),100,2, byrow = FALSE)) )
+summary(lm.out)
+```
+
+$\hat\beta_{0}=2.1305$   
+$\hat\beta_{1}=1.4396$   
+$\hat\beta_{2}=1.0097$  
+
+Only $\hat\beta_{0}$ is close to $\beta_{0}$   
+For V1: We can reject $\ H_{0}$    because p-value is below 5%   
+For V1: We cannot reject $\ H_{0}$ because p-value is above 5%   
+
+### (d)
+```{r}
+lm.out = lm( formula = y ~ . ,data = as.data.frame(matrix(c(x1),100,1, byrow = FALSE)) )
+summary(lm.out)
+```
+
+Using only X1 the coeffient is 1.9759. It is higher comapre to using both X1 and X2 that was 1.4396 and we can reject $\ H_{0}$ for its very low  p-value.
+
+
+### (e)
+```{r}
+lm.out = lm( formula = y ~ . ,data = as.data.frame(matrix(c(x2),100,1, byrow = FALSE)) )
+summary(lm.out)
+```
+Using only X2 the coeffient is 2.8996 It is much higher comapre to using both X1 and X2 that was 1.0097 and we can reject $\ H_{0}$ for its very low p-value.
+
+### (f)
+No, both result are not against each other. X1 and X2 have collinearity and it is hard distinguish effects of both together. 
+
+### (g)
+```{r}
+x1=c(x1,0.1)
+x2=c(x2,0.8)
+y=c(y,6)
+lm.out1 = lm(y ~ x1 + x2 )
+summary(lm.out)
+```
+
+```{r}
+lm.out2 = lm(y ~ x1)
+summary(lm.out)
+```
+
+```{r}
+lm.out3 = lm(y ~ x2)
+summary(lm.out)
+```
+
+```{r}
+par(mfrow=c(2,2))
+plot(lm.out1)
+```
+
+```{r}
+par(mfrow=c(2,2))
+plot(lm.out3)
+```
+
+```{r}
+par(mfrow=c(2,2))
+plot(lm.out3)
+```
+
+# Problem 8
+**Exercise 15 from section 3.7**
+
+```{r}
+install.packages("MASS", repos = "http://cran.us.r-project.org")
+library(MASS)
+boston = MASS::Boston
+```
+
+### (a)
+```{r}
+lm.zn = lm(crim ~ zn, data = boston)
+summary(lm.zn)
+```
+```{r}
+lm.indus = lm(crim ~ indus, data = boston)
+summary(lm.indus)
+```
+
+```{r}
+lm.chas = lm(crim ~ chas, data = boston)
+summary(lm.chas)
+```
+
+```{r}
+lm.nox = lm(crim ~ nox, data = boston)
+summary(lm.nox)
+```
+
+```{r}
+lm.rm = lm(crim ~ rm, data = boston)
+summary(lm.rm)
+```
+
+```{r}
+lm.age = lm(crim ~ age, data = boston)
+summary(lm.age)
+```
+
+```{r}
+lm.dis = lm(crim ~ dis, data = boston)
+summary(lm.dis)
+```
+
+```{r}
+lm.rad = lm(crim ~ rad, data = boston)
+summary(lm.rad)
+```
+
+```{r}
+lm.tax = lm(crim ~ tax, data = boston)
+summary(lm.tax)
+```
+
+```{r}
+lm.ptratio = lm(crim ~ ptratio, data = boston)
+summary(lm.ptratio)
+```
+
+```{r}
+lm.black = lm(crim ~ black, data = boston)
+summary(lm.black)
+```
+
+```{r}
+lm.lstat = lm(crim ~ lstat, data = boston)
+summary(lm.lstat)
+```
+
+```{r}
+lm.medv = lm(crim ~ medv, data = boston)
+summary(lm.medv)
+```
+All have p-value less than 0.05 except *"chas"* with p-value=0.2094 so there is significant association between all predictors and the response except for *"chas"*.
+
+### (b)
+```{r}
+lm.out = lm(crim ~ ., data = boston)
+summary(lm.out)
+```
+We cab reject $H_{0}$ for zn, dis, rad, black, medv.
+
+
+### (c)
+```{r}
+x = c(coefficients(lm.zn)[2],
+      coefficients(lm.indus)[2],
+      coefficients(lm.chas)[2],
+      coefficients(lm.nox)[2],
+      coefficients(lm.rm)[2],
+      coefficients(lm.age)[2],
+      coefficients(lm.dis)[2],
+      coefficients(lm.rad)[2],
+      coefficients(lm.tax)[2],
+      coefficients(lm.ptratio)[2],
+      coefficients(lm.black)[2],
+      coefficients(lm.lstat)[2],
+      coefficients(lm.medv)[2])
+y = coefficients(lm.out)[2:14]
+plot(x, y)
+```
+
+### (d)
+```{r}
+lm.ployzn = lm(crim ~ poly(zn,3), data=boston)
+summary(lm.ployzn)
+```
+
+```{r}
+lm.ployindus = lm(crim ~ poly(indus,3), data=boston)
+summary(lm.ployindus)
+```
+
+```{r}
+lm.ploynox = lm(crim ~ poly(nox,3), data=boston)
+summary(lm.ploynox)
+```
+
+```{r}
+lm.ployrm = lm(crim ~ poly(rm,3), data=boston)
+summary(lm.ployrm)
+```
+
+```{r}
+lm.ployage = lm(crim ~ poly(age,3), data=boston)
+summary(lm.ployage)
+```
+
+```{r}
+lm.ploydis = lm(crim ~ poly(dis,3), data=boston)
+summary(lm.ploydis)
+```
+
+```{r}
+lm.ployrad = lm(crim ~ poly(rad,3), data=boston)
+summary(lm.ployrad)
+```
+
+```{r}
+lm.ployptratio = lm(crim ~ poly(ptratio,3), data=boston)
+summary(lm.ployptratio)
+```
+
+```{r}
+lm.ployblack = lm(crim ~ poly(black,3), data=boston)
+summary(lm.ployblack)
+```
+
+```{r}
+lm.ploylstat = lm(crim ~ poly(lstat,3), data=boston)
+summary(lm.ploylstat)
+```
+
+```{r}
+lm.ploymedv = lm(crim ~ poly(medv,3), data=boston)
+summary(lm.ploymedv)
+```
+
+For zn, rm, rad, tax, lstat based on p-values the cubic coefficient is not good enough.

@@ -1,0 +1,341 @@
+---
+title: "HW3"
+author: "Ramtin Boustani - SUID# 05999261"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+# Problem 1
+**Chapter 4, Exercise 4**
+
+### (a)
+#P=1    
+~10%
+
+### (b)
+#P=2   
+10% * 10%  ~ 0.1%
+
+
+### (c)
+#P=100   
+$\ 10\%^{100}$ ~ 0%
+
+### (d)
+#p= $\infty$   
+$\displaystyle \lim_{ p \to \infty} (10\%) ^ p$ ~ 0%
+
+### (e)
+#p=1 --> l=0.10    
+#p=2 --> l=$\ {0.10}^{1/2}$    
+#p=3 --> l=$\ {0.10}^{1/3}$    
+....   
+#p=n --> l=$\ {0.10}^{1/n}$    
+
+# Problem 2
+**Chapter 4, Exercise 5**
+
+### (a)
+Linear Bayes decision boundary   
+training set: QDA perform better because is more flexible    
+test set: LDA perform better becuase QDA could overfit the linearity    
+
+### (b)
+non-linear Bayes decision boundary   
+training set: QDA perform better because it is more flexible    
+test set: QDA perform better because it is more flexible    
+
+### (c)
+Dependes on the linearity of Bayes decision boundary.    
+Generally, QDA perform better because of being more flexible and large size of n helps to decrease high variance issue
+
+### (d)
+False   
+Since QDA is more flexible and captures all noises so overfitting happens and will have lower test error rate.
+
+# Problem 3
+**Chapter 4, Exercise 6**
+
+### (a)
+```{r}
+b0= -6
+b1 = 0.05
+b2= 1
+x1=40
+x2=3.5
+f=b0+(b1*x1)+(b2*x2)
+p= exp(f)/(1+exp(f))
+p
+```
+37.75%   
+
+### (b)
+p=0.5    
+$\ e^{f} = (0.5) (1+ e^{f})$    
+$\ 0.5 * e^{f} = 0.5$        
+$\ e^{f} = 1$    
+$\ ln(1) = f$    
+$\  0 = -6 + b1 * 0.05 + 1*3.5$    
+$\ b1=50$     
+Need to study 50 Hours
+
+# Problem 4
+**Chapter 4, Exercise 8**   
+
+Logistic  Regression   
+For KNN for K=1 since test and training samples are the same so training error is zero.   
+Because For k=1 we choose 1st closing training sample that is itself.     
+Since training error is 0% and given 18% average error rate we have the following:   
+(0% + test-error% )/ 2 = 18% --> KNN k=1 error rate was 36%
+
+Logestic regression has lower error rate of 30%!
+
+# Problem 5
+**Chapter 4, Exercise 10**
+
+```{r}
+require(ISLR)
+attach(Weekly)
+```
+
+### (a)
+```{r}
+pairs(Weekly, col=Weekly$Direction )
+```
+```{r}
+cor(Weekly[,-9])
+```
+Year and Volume have a relationship because of covariance of (0.84)  
+
+### (b)
+```{r}
+glm.fit = glm(Direction ~. - Year - Today , data = Weekly, family = binomial)
+summary(glm.fit)
+```
+Lag2 has p-value less than 5% and statistical significance   
+
+```{r}
+glm.probs = predict(glm.fit, type = "response")
+mean(glm.probs)
+```
+Not strong prediction because of probability of being up or down is around ~50%
+
+### (c)
+```{r}
+glm.pred = ifelse( glm.probs>0.5, "Up", "Down" )
+table(glm.pred, Direction)
+```
+correct predication: 611/1089 = 56%   
+accuracy of UP predication: 557/605 = 92%   
+accuracy of Down predication: 54/484 = 11% (weak prediction)   
+
+### (d)
+```{r}
+train = Year<=2008
+glm.fit = glm(Direction~Lag2, subset=train, family = binomial)
+glm.probs = predict(glm.fit, newdata = Weekly[!train,], type="response")
+glm.pred = ifelse(glm.probs>0.5, "Up", "Down")
+table(glm.pred, Weekly[!train,]$Direction)
+```
+
+```{r}
+mean(glm.pred == Weekly[!train,]$Direction)
+```
+### (e)
+
+Importing MASS for lda library
+```{r}
+library(MASS)
+```
+
+```{r}
+lda.fit = lda(Direction ~ Lag2, data = Weekly, subset = train)
+lda.pred = predict(lda.fit , newdata= Weekly[!train,], type="response")
+table(lda.pred$class, Weekly[!train,]$Direction)
+```
+```{r}
+mean(lda.pred$class==Weekly[!train,]$Direction)
+```
+
+### (f)
+```{r}
+qda.fit = qda(Direction ~ Lag2, data = Weekly, subset = train)
+qda.pred = predict(qda.fit , newdata= Weekly[!train,], type="response")
+table(qda.pred$class, Weekly[!train,]$Direction)
+```
+```{r}
+mean(qda.pred$class==Weekly[!train,]$Direction)
+```
+
+### (g)
+
+```{r}
+library(class)
+```
+
+```{r}
+knn.pred = knn(as.matrix(Weekly[train,"Lag2"]), as.matrix(Weekly[!train,"Lag2"]), Weekly[train,"Direction"], k=1)
+table(Weekly[!train,]$Direction, knn.pred)
+```
+  
+```{r}
+mean(knn.pred == Weekly[!train,]$Direction)
+```
+
+### (h)
+LDA has best predicition
+
+### (i)
+Predictor: Lag2   
+KNN: 10
+```{r}
+knn.pred = knn(as.matrix(Weekly[train,"Lag2"]), as.matrix(Weekly[!train,"Lag2"]), Weekly[train,"Direction"], k=10)
+mean(knn.pred == Weekly[!train,]$Direction)
+```
+
+Predictor: Lag2   
+KNN: 100
+```{r}
+knn.pred = knn(as.matrix(Weekly[train,"Lag2"]), as.matrix(Weekly[!train,"Lag2"]), Weekly[train,"Direction"], k=100)
+mean(knn.pred == Weekly[!train,]$Direction)
+```
+
+Predictor: Lag1 Lag2  
+KNN: 1
+```{r}
+knn.pred = knn(as.matrix(Weekly[train, c("Lag1", "Lag2")]), as.matrix(Weekly[!train,c("Lag1", "Lag2")]), Weekly[train,"Direction"], k=1)
+mean(knn.pred == Weekly[!train,]$Direction)
+```
+
+Predictor: Lag1 Lag2, Lag3, Lag3, Lag4   
+KNN: 1
+```{r}
+knn.pred = knn(as.matrix(Weekly[train, c("Lag1", "Lag2", "Lag3", "Lag4", "Lag5")]), as.matrix(Weekly[!train,c("Lag1", "Lag2", "Lag3", "Lag4", "Lag5")]), Weekly[train,"Direction"], k=2)
+mean(knn.pred == Weekly[!train,]$Direction)
+```
+
+Predictor: Lag1 Lag2   
+LDA
+```{r}
+lda.fit = lda(Direction ~ Lag1 + Lag2, data = Weekly, subset = train)
+lda.pred = predict(lda.fit , newdata= Weekly[!train,], type="response")
+mean(lda.pred$class==Weekly[!train,]$Direction)
+```
+
+Predictor: Lag1 Lag2,Lag3, Lag4, Year   
+LDA
+```{r}
+lda.fit = lda(Direction ~ Lag1+Lag2+Lag3+Lag4+Year, data = Weekly, subset = train)
+lda.pred = predict(lda.fit , newdata= Weekly[!train,], type="response")
+mean(lda.pred$class==Weekly[!train,]$Direction)
+```
+^^^ The best result   
+
+# Problem 6
+**Chapter 4, Exercise 11**
+
+### (a)
+```{r}
+mpg01 = ifelse(Auto$mpg > median(Auto$mpg), 1, 0)
+Auto = data.frame(Auto, mpg01)
+attach(Auto)
+```
+
+### (b)
+```{r}
+pairs(Auto, col=Auto$mpg01+1)
+```
+
+```{r}
+cor(Auto[,-9])
+```
+mpg01 has positive relation with year and origin   
+mpg01 has opposite relation with cylinders, displacement, horsepower and weight   
+
+
+```{r}
+par(mfrow=c(2,4))
+boxplot( cylinders ~ mpg01)
+boxplot( displacement ~ mpg01)
+boxplot( horsepower ~ mpg01)
+boxplot( weight ~ mpg01)
+boxplot( acceleration ~ mpg01)
+boxplot( year ~ mpg01)
+boxplot( origin ~ mpg01)
+```
+ cylinders, displacement, horsepower and weight medinas (middle line) is outsite of other box so they are separate groups
+
+### (c)
+```{r}
+train = year%%2 == 0
+print("Train:")
+dim(Auto[train,])[1]
+print("Test:")
+dim(Auto[!train,])[1]
+print("Total:")
+dim(Auto)[1]
+```
+
+### (d)
+lda:   
+```{r}
+lda.fit =  lda(mpg01 ~ cylinders + displacement + horsepower + weight, data = Auto , subset = train)
+lda.pred = predict(lda.fit, newdata = Auto[!train,], type="response")
+table(lda.pred$class, Auto[!train, "mpg01"])
+```
+
+```{r}
+mean(lda.pred$class != Auto[!train, "mpg01"])
+```
+
+### (e)
+qda:   
+```{r}
+qda.fit =  qda(mpg01 ~ cylinders + displacement + horsepower + weight, data = Auto , subset = train)
+qda.pred = predict(qda.fit, newdata = Auto[!train,], type="response")
+table(qda.pred$class, Auto[!train, "mpg01"])
+```
+
+```{r}
+mean(qda.pred$class != Auto[!train, "mpg01"])
+```
+
+### (f)
+linear regression:   
+```{r}
+glm.fit = glm(mpg01 ~ cylinders + displacement + horsepower + weight, data =Auto, subset = train, family = binomial)
+glm.probs = predict(glm.fit, newdata = Auto[!train,], type = "response")
+glm.pred = ifelse(glm.probs>0.5, 1, 0)
+table(glm.pred, Auto[!train, "mpg01"])
+```
+
+```{r}
+mean(glm.pred != Auto[!train, "mpg01"])
+```
+^^^ lowest test error   
+
+### (g)
+KNN (k=1)   
+```{r}
+knn.pred = knn(Auto[train,c("cylinders", "displacement", "horsepower", "weight")], Auto[!train,c("cylinders", "displacement", "horsepower", "weight")], Auto[train, "mpg01"], k=1)
+table(knn.pred =  Auto[!train, "mpg01"])
+```
+
+```{r}
+mean(knn.pred != Auto[!train, "mpg01"])
+```
+
+KNN (k=10)   
+```{r}
+knn.pred = knn(Auto[train,c("cylinders", "displacement", "horsepower", "weight")], Auto[!train,c("cylinders", "displacement", "horsepower", "weight")], Auto[train, "mpg01"], k=10)
+mean(knn.pred != Auto[!train, "mpg01"])
+```
+
+KNN (k=100)   
+```{r}
+knn.pred = knn(Auto[train,c("cylinders", "displacement", "horsepower", "weight")], Auto[!train,c("cylinders", "displacement", "horsepower", "weight")], Auto[train, "mpg01"], k=100)
+mean(knn.pred != Auto[!train, "mpg01"])
+```
+^^^ best KNN (k=100)

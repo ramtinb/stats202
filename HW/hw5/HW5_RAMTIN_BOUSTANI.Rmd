@@ -1,0 +1,364 @@
+---
+title: "HW5"
+author: "Ramtin Boustani - SUID# 05999261"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+# Problem 1
+**Chapter 6, Exercise 1**
+
+### (a)
+Best subset selection has the samllest training RSS because of doing exhaustive search among all possible combinations    
+
+### (b)    
+Mostly Best subset selection because of doing exhaustive search among all possible combinations but there is a chance other methods performing better.
+
+### (c)   
+
+#### i.    
+True
+
+#### ii.   
+True
+
+#### iii.   
+False, there is no relation between predictors chosen in backward and forward subset selection.
+
+#### iv.   
+False, there is no relation between predictors chosen in backward and forward subset selection.
+
+#### V.   
+False
+
+# Problem 2
+**Chapter 6, Exercise 3**
+
+### (a)     
+(iv) steadily decrease.     
+By increasing s, coefficients are less restrictive and they have more variance and less bias and model will have less training RSS.    
+
+### (b)     
+(ii) decrease intially and eventually U shape. General pattern, model become more and more flexible and up to some point  and then overfitting issue causes increase test RSS.
+
+### (c)     
+(iii) steadily increase, the same behaviour mentioned above.
+
+### (d)     
+(iv) steadily decrease, by increasing s we have more and more variance and less and less bias.
+
+### (e)     
+(v) remain constant. irreducible eror is independent of s and betas.
+
+# Problem 3
+**Chapter 6, Exercise 8**
+
+### (a)
+```{r}
+set.seed(1)
+X = rnorm(100)
+eps = rnorm(100)
+```
+
+### (b)
+All non-zero coefficients equal to 0.5    
+```{r}
+beta0 = 0.5
+beta1 = 0.5
+beta2 = 0.5
+beta3 = 0.5
+Y = beta0 + beta1 * X + beta2 * X^2 + beta3 * X^3 + eps
+```
+
+### (c)
+
+#### Best subset selection    
+```{r}
+library(leaps)
+data = data.frame( Y=Y, poly(X, 10, raw = T))
+regfit.data = data
+regfit.full = regsubsets(Y ~ . , data = regfit.data, nvmax = 10, method = "exhaustive")
+regfit.summary = summary(regfit.full)
+par(mfrow = c(2,2))
+plot(regfit.summary$cp, xlab = "number of variables", ylab = "cp", type="l")
+points(which.min(regfit.summary$cp), regfit.summary$cp[which.min(regfit.summary$cp)], col="red", cex=2, pch=20)
+plot(regfit.summary$bic, xlab = "number of variables", ylab = "bic", type="l")
+points(which.min(regfit.summary$bic), regfit.summary$bic[which.min(regfit.summary$bic)],col="red", cex=2, pch=20)
+plot(regfit.summary$adjr2, xlab="number of variables", ylab = "adjr2", type="l")
+points(which.max(regfit.summary$adjr2), regfit.summary$adjr2[which.max(regfit.summary$adjr2)],col = "red", cex = 2, pch = 20)
+```
+
+```{r}
+which.max(regfit.summary$adjr2)
+```
+```{r}
+coef(regfit.full, id= which.max(regfit.summary$adjr2))
+```
+Insted of X3, X5 has chosen.    
+beta0 is a good estimate but coefficients of X1, X2 and X5 is not close 0.5!    
+
+
+### (d)   
+
+#### Forward subset selection
+```{r}
+regfit.fwd = regsubsets(Y ~ . , data = regfit.data, nvmax = 10, method = "forward")
+regfit.summary = summary(regfit.fwd)
+par(mfrow = c(2,2))
+plot(regfit.summary$cp, xlab = "number of variables", ylab = "cp", type="l")
+points(which.min(regfit.summary$cp), regfit.summary$cp[which.min(regfit.summary$cp)], col="red", cex=2, pch=20)
+plot(regfit.summary$bic, xlab = "number of variables", ylab = "bic", type="l")
+points(which.min(regfit.summary$bic), regfit.summary$bic[which.min(regfit.summary$bic)],col="red", cex=2, pch=20)
+plot(regfit.summary$adjr2, xlab="number of variables", ylab = "adjr2", type="l")
+points(which.max(regfit.summary$adjr2), regfit.summary$adjr2[which.max(regfit.summary$adjr2)],col = "red", cex = 2, pch = 20)
+```
+```{r}
+which.max(regfit.summary$adjr2)
+```
+```{r}
+coef(regfit.fwd, id= which.max(regfit.summary$adjr2))
+```
+
+#### Backward subset selection    
+```{r}
+regfit.bwd = regsubsets(Y ~ . , data = regfit.data, nvmax = 10, method = "backward")
+regfit.summary = summary(regfit.bwd)
+par(mfrow = c(2,2))
+plot(regfit.summary$cp, xlab = "number of variables", ylab = "cp", type="l")
+points(which.min(regfit.summary$cp), regfit.summary$cp[which.min(regfit.summary$cp)], col="red", cex=2, pch=20)
+plot(regfit.summary$bic, xlab = "number of variables", ylab = "bic", type="l")
+points(which.min(regfit.summary$bic), regfit.summary$bic[which.min(regfit.summary$bic)],col="red", cex=2, pch=20)
+plot(regfit.summary$adjr2, xlab="number of variables", ylab = "adjr2", type="l")
+points(which.max(regfit.summary$adjr2), regfit.summary$adjr2[which.max(regfit.summary$adjr2)],col = "red", cex = 2, pch = 20)
+```
+```{r}
+which.max(regfit.summary$adjr2)
+```
+```{r}
+coef(regfit.bwd, id= which.max(regfit.summary$adjr2))
+```
+Best subset selection chosen 3 variables (Intercept=0.57, X1=0.94, X2=0.34, X5=0.09)    
+Forward subset selection chosen 4 variables (Intercept=0.57, X1= 0.88, X2=0.34, X3=0.05, X5=0.08)    
+Backward subset selection chosen 3 variables (Intercept=0.69, X1=0.98, X4=0.07, X5=0.08)    
+
+### (e)
+```{r}
+library(glmnet)
+xmat = model.matrix(Y ~ poly(X, 10, raw = T), data = data)[,-1]
+mod.lasso = cv.glmnet(xmat, Y, alpha=1)
+best.lamda = mod.lasso$lambda.min
+best.lamda 
+```
+```{r}
+plot(mod.lasso)
+```
+Based on the best lamda predicating using lasso
+```{r}
+fit.lasso = glmnet(xmat, Y, alpha=1)
+predict(fit.lasso, s=best.lamda, type = "coefficients" )
+```
+lasso picks 6 variables which X1 has the most weight and X4, X5 and X6 have small wight
+
+### (f)
+All non-zero coefficients equal to 0.5   
+
+#### Lasso      
+```{r}
+beta7= 0.5
+Y = beta0 + beta7 * X^7 + eps
+data = data.frame( Y=Y, poly(X, 10, raw = T))
+xmat = model.matrix(Y ~ poly(X, 10, raw = T), data = data)[,-1]
+mod.lasso = cv.glmnet(xmat, Y ,alpha=1)
+best.lamda = mod.lasso$lambda.min
+fit.lasso = glmnet(xmat, Y, alpha = 1)
+predict(fit.lasso, s=best.lamda, type = "coefficients" )
+```
+
+#### best subset selection   
+```{r}
+regfit.full = regsubsets( Y~. , data=data, method = "exhaustive", nvmax = 10)
+regfit.summary = summary(regfit.full)
+coef(regfit.full, id = which.min(regfit.summary$cp) )
+```
+
+Both Lasso and Best subset pick one wrong extra predictor (lasso X9 & best subset X2)     
+Weight of estimation for beta7 and intercept in best subset is better than lasso     
+
+# Problem 4
+**Chapter 6, Exercise 9**
+
+### (a)
+
+```{r}
+library(ISLR)
+set.seed(1)
+n = dim(College)[1]
+train.size = n/2
+train = sample( 1:n, size = train.size)
+College.train = College[train, ]
+College.test = College[-train, ]
+```
+
+### (b)
+```{r}
+lm.fit = lm(Apps ~ ., data=College.train)
+lm.predict = predict(lm.fit, College.test)
+lm.test = mean((College.test[,"Apps"]-lm.predict)^2)
+lm.test
+```
+
+### (c)
+
+```{r}
+train.xmat = model.matrix(Apps~. , data=College.train )
+test.xmat = model.matrix(Apps~. , data=College.test )
+train.y = College.train[,"Apps"]
+test.y = College.test[,"Apps"]
+mod.ridge = cv.glmnet(x = train.xmat, y = train.y, alpha=0)
+best.lamda = mod.ridge$lambda.min
+pred.ridge = predict(mod.ridge, s=best.lamda, newx = test.xmat)
+ridge.test = mean((test.y - pred.ridge)^2)
+ridge.test
+```
+Test error for ridge regression is higher than linear regression   
+
+### (d)
+```{r}
+mod.lasso = cv.glmnet(x = train.xmat, y = train.y, alpha=1)
+best.lamda = mod.lasso$lambda.min
+pred.lasso = predict(mod.lasso, s=best.lamda, newx = test.xmat)
+lasso.test = mean((test.y - pred.lasso)^2)
+lasso.test 
+```
+Test error for lasso is higher than ridge regression     
+
+```{r}
+mod.lasso = glmnet( x= model.matrix( Apps~. , data =College), y=College[,"Apps"], alpha = 1)
+predict(mod.lasso, s=best.lamda , type="coefficients")
+```
+PrivateYes, Accept, Top10perc, Top25perc, PhD, Terminal, S.F.Ratio, Grad.Rate have high weight    
+F.Undergrad, P.Undergrad, Books, Personal, perc.alumni have very low weight    
+
+### (e)
+```{r}
+library(pls)
+fit.pcr = pcr( Apps~., data= College.train, scale=TRUE, validation="CV" )
+validationplot(fit.pcr, val.type="MSEP")
+```
+```{r}
+pcr.pred = predict(fit.pcr, College.test, ncomp=10)
+pcr.test = mean((test.y - pcr.pred)^2)
+pcr.test 
+```
+Test error for PCR is higger than lasso    
+
+### (f)
+```{r}
+pls.fit <- plsr(Apps ~ ., data = College.train, scale = TRUE, validation = "CV")
+pls.pred <- predict(pls.fit, College.test, ncomp = 10)
+pls.test = mean((pls.pred - test.y)^2)
+pls.test
+```
+Test error is lower than PCR
+
+### (g)
+R-square
+```{r}
+test.avg <- mean(College.test$Apps)
+tss =  mean((test.y-test.avg)^2)
+pcr.r2 = 1 - pcr.test/tss
+lm.r2 = 1 - lm.test/tss
+lasso.r2 = 1 - lasso.test/tss
+ridge.r2 = 1 - ridge.test/tss
+pls.r2 = 1 - pls.test/tss
+barplot(c(pcr.r2, lm.r2, lasso.r2, ridge.r2, pls.r2), names.arg = c("pcr", "lm", "lasso", "ridge", "pls"), main="Test R-squared" , ylim = 0:1)
+```
+     
+pcr < lm < lasso < ridge < pls    
+
+# Problem 5
+**Chapter 6, Exercise 11**
+
+### (a)
+```{r}
+library(MASS)
+set.seed(1)
+```
+
+#### best subset selection  
+```{r}
+#implement predict for best subset
+predict.regsubsets = function(object, newdata, id, ...) {
+    form = as.formula(object$call[[2]])
+    mat = model.matrix(form, newdata)
+    coefi = coef(object, id = id)
+    mat[, names(coefi)] %*% coefi
+}
+
+#using 10 fold corss validation
+k=10
+p = ncol(Boston) - 1
+folds = sample(rep(1:k, length = nrow(Boston)))
+cv.errors = matrix(NA, k, p)
+for (i in 1:k) {
+    best.fit = regsubsets(crim ~ ., data = Boston[folds != i, ], nvmax = p)
+    for (j in 1:p) {
+        pred = predict(best.fit, Boston[folds == i, ], id = j)
+        cv.errors[i, j] = mean((Boston$crim[folds == i] - pred)^2)
+    }
+}
+mse.cv = apply(cv.errors, 2, mean)
+which.min(mse.cv)
+mse.cv[which.min(mse.cv)]
+```
+
+
+#### Lasso  
+```{r}
+x = model.matrix( crim ~ ., data = Boston)[,-1]
+y = Boston[,1]
+cv.lasso = cv.glmnet(x, y, alpha=1, type.measure = "mse")
+cv.lasso
+```
+
+#### Ridge   
+```{r}
+x = model.matrix( crim ~ ., data = Boston)[,-1]
+y = Boston[,1]
+cv.ridge = cv.glmnet(x, y, alpha=0, type.measure = "mse")
+cv.ridge
+```
+
+
+#### PCR   
+```{r}
+fit.pcr = pcr( crim ~., data=Boston, scale=TRUE, validation="CV")
+#summary(fit.pcr)
+MSEP(fit.pcr)
+```
+
+Lasso (42.52) vs Ridge (45.42) vs PCR(43.09) vs Best subest selection (42.92)
+```{r}
+par(mfrow = c(2,2))
+plot(cv.lasso , main="Lasso" )
+plot(cv.ridge, main = "Ridge")
+validationplot(fit.pcr, val.type="MSEP" ,ylab = "Mean-Squared Error", main="PCR")
+abline(v=13)
+plot(mse.cv, pch = 19, type = "b",  ylab = "Mean-Squared Error", xlab = "number of predictors", main="10-fold Best Subeset Selection")
+abline(v=which.min(mse.cv))
+```
+
+### (b)    
+All 4 models have close test MSE but best subset selection model with CV 10 folds has the best performance     
+
+
+### (c)     
+No, from 13 features     
+Best subset uses 12    
+Lasso uses 11      
+Ridge uses 13     
+PCR uses 13 components    
+     
+
