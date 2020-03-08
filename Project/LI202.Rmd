@@ -1,0 +1,280 @@
+---
+title: "LI202 - Kaggle Predicting sales prices"
+author: "Ramtin Boustani, Souptik Sen, Ashwin Murthy, "
+output: html_document
+---
+#Kaggle https://www.kaggle.com/c/stats20219/overview
+#Ref. https://www.kaggle.com/erikbruin/house-prices-lasso-xgboost-and-a-detailed-eda/report
+
+# Loading
+```{r}
+library(caret)
+library(psych)
+library(corrplot)
+library(outliers)
+library(fastDummies)
+
+set.seed(1)
+
+data = read.csv("/Users/rboustan/Documents/Stat202/kaggle/stats20219/train.csv", stringsAsFactors=FALSE)
+test = read.csv("/Users/rboustan/Documents/Stat202/kaggle/stats20219/test.csv", stringsAsFactors=FALSE)
+
+testLabels = test$Id
+
+test$Id = NULL
+data$Id = NULL
+
+test$P = NA
+
+# both training data and test data
+all = rbind(data, test)
+```
+
+# Preprocessing
+
+```{r}
+c = cor(all, use="pairwise.complete.obs")
+corrplot.mixed(c)
+```
+
+### Engineering
+```{r}
+#age = as.integer((all$Y-all$YB)/10)*10
+
+#will cause multicollinearity
+#priceSqft = all$P/all$S
+```
+
+### Factorizing
+```{r}
+#all$Y = as.factor(all$Y)
+#all$R = as.factor(all$R)
+#all$Sch = as.factor(all$Sch)
+#all$C = as.factor(all$C)
+
+#all$Age = as.factor(age)
+#Very bad result after factorizing YB
+
+#attach(all)
+dummySch = dummy_cols(data.frame( "Sch" = as.factor(all$Sch)))
+#dummySch$Sch = NULL
+  
+dummyC = dummy_cols(data.frame( "C" = as.factor(all$C)))
+#dummyC$C = NULL
+
+dummyY = dummy_cols(data.frame( "Y" = as.factor(all$Y)))
+#dummyY$Y = NULL
+
+
+DFdummies = c(dummySch, dummyC, dummyY)
+
+
+
+#DFfactors = all[, c("Sch", "C")]
+#DFdummies = as.data.frame(model.matrix(~. -1, DFfactors))
+```
+
+
+### Normalizing
+```{r}
+#DFnorm = all[, c("P", "S", "YB", "L")]
+DFnorm = all[, c("P", "R", "L", "PT","YB","S")]
+
+DFnorm$P = log(DFnorm$P)
+#for(i in 1:ncol(DFnorm)){
+#        if (abs(skew(DFnorm[,i]))>0.8){
+#                DFnorm[,i] <- log(DFnorm[,i] +1)
+#        }
+#}
+
+#TODO: havent seen too much improvement so far
+#DFnumeric = all[, c("S", "L",  "YB" )]
+#PreNum = preProcess(DFnumeric, method=c("center", "scale"))
+#DFnorm  = predict(PreNum, DFnumeric)
+#DFnorm = cbind( all[, c("P", "YB")] ,   DFnorm)
+```
+Removed YB, not helpful! Put age!     
+
+
+
+### combining
+```{r}
+orginalAll = all
+all= cbind(DFnorm, DFdummies) 
+```
+
+### removing outlier
+```{r}
+```
+
+```
+c = cor(all, use="pairwise.complete.obs")
+corrplot.mixed(c)
+```
+
+# Modeling
+
+```{r}
+set.seed(1)
+originalData = data
+data  = all[!is.na(all$P),]
+
+originalTest = test
+test = all[is.na(all$P),]
+
+# for testing purpose
+train = sample(275,200)
+expData = data[train,]
+expTest = data[-train,]
+expTestResult = expTest$P
+expTest$P = NA
+
+testingReport = function(method, trControl, tuneGrid) {
+  mod = train(x=expData[,-1], y=expData$P, method=method, trControl=trControl, tuneGrid=tuneGrid, verbose=FALSE) 
+  pred = predict(mod, expTest)
+  testingReportPred(pred)
+}
+
+testingReport2 = function(method, trControl) {
+  mod = train(x=expData[,-1], y=expData$P, method=method, trControl=trControl, verbose=FALSE) 
+  pred = predict(mod, expTest)
+  testingReportPred(pred)
+}
+
+testingReportLasso = function(method, trControl,tuneGrid) {
+  attach(expData)
+  mod = train( P ~ (R+PT+S+YB+L+Sch_0+Sch_1+Sch_2+C_1+C_2+C_3+C_4+Y_2000+Y_2001+Y_2002+Y_2003+Y_2004+Y_2005+Y_2006+Y_2007+Y_2008+Y_2009+Y_2010+Y_2011+Y_2012+Y_2013+Y_2014+Y_2015+Y_2016+Y_2017+Y_2018)^2,  data=expData, method='glmnet', trControl=trControl,tuneGrid=tuneGrid)
+  pred = predict(mod, expTest)
+  testingReportPred(pred)
+}
+
+testingReportXGB = function(method, trControl) {
+  attach(expData)
+  mod = train( P ~ (R+PT+S+YB+L+Sch_0+Sch_1+Sch_2+C_1+C_2+C_3+C_4+Y),  data=expData, method='xgbTree', trControl=trControl)
+  pred = predict(mod, expTest)
+  testingReportPred(pred)
+}
+
+
+testingReportPred = function(pred) {
+  pred = exp(pred)
+  expTestResult = exp(expTestResult)
+  
+  result = data.frame(Predicted= format(as.integer(pred), nsmall=1, big.mark=",") , Actual= format(expTestResult, nsmall=1, big.mark=","), diff =  as.integer(pred - expTestResult) )
+  write.table(result, "/Users/rboustan/Documents/Stat202/kaggle/submission/submissionTEST.csv",row.names = F, sep = ",")
+  
+  p = postResample(pred, expTestResult)
+  cat("MSE " , p[1]*p[1]/1000000 , "\n")
+  p
+}
+
+```
+
+### Ridge
+```
+#alpha 0 is ridge
+ridgeCtrl = trainControl(method = "cv", number = 10)
+ridgeGrid = expand.grid(alpha = 0, lambda = seq(0.001,0.1, by = 0.0005))
+
+#testing
+testingReport(method='glmnet', trControl=ridgeCtrl, tuneGrid=ridgeGrid)
+
+ridge.mod = train(x=data[,-1], y=data$P, method='glmnet', trControl=ridgeCtrl, tuneGrid=ridgeGrid) 
+ridge.pred = predict(ridge.mod, test)
+
+```
+Best so far:
+MSE  6553.786 
+        RMSE     Rsquared          MAE 
+8.095546e+04 9.354284e-01 5.375120e+04
+
+### Lasso
+```{r}
+#alpha 1 is Lasso
+lassoCtrl = trainControl(method = "cv", number = 10)
+lassoGrid = expand.grid(alpha = 1, lambda = seq(0.001,0.1, by = 0.0005))
+
+#testing
+testingReportLasso(method='glmnet', trControl=lassoCtrl, tuneGrid=lassoGrid)
+attach(all)
+#lasso.mod = train(x=data[,-1], y=data$P, method='glmnet', trControl=lassoCtrl, tuneGrid=lassoGrid)
+lasso.mod = train( P ~ (R+PT+S+YB+L+Sch_0+Sch_1+Sch_2+C_1+C_2+C_3+C_4+Y_2000+Y_2001+Y_2002+Y_2003+Y_2004+Y_2005+Y_2006+Y_2007+Y_2008+Y_2009+Y_2010+Y_2011+Y_2012+Y_2013+Y_2014+Y_2015+Y_2016+Y_2017+Y_2018)^2,  data=data, method='glmnet', trControl=lassoCtrl,tuneGrid=lassoGrid)
+#lasso.mod
+
+lassoVarImp <- varImp(lasso.mod,scale=F)
+lassoImportance <- lassoVarImp$importance
+lassoImportance
+varsSelected <- length(which(lassoImportance$Overall!=0))
+varsNotSelected <- length(which(lassoImportance$Overall==0))
+
+cat('Lasso uses', varsSelected, 'variables in its model, and did not select', varsNotSelected, 'variables.')
+lasso.pred = predict(lasso.mod,test)
+
+```
+Best so far:
+MSE  1587.642 
+        RMSE     Rsquared          MAE 
+3.984523e+04 9.834983e-01 3.366952e+04
+
+### GBM
+```
+gbmCtrl = trainControl(method = "cv", number = 10)
+
+#testing
+testingReport2(method = "gbm", trControl = gbmCtrl)
+
+gbm.mod = train(x=data[,-1], y=data$P, method='gbm', trControl= gbmCtrl, verbose=FALSE)
+gbm.pred = predict(gbm.mod, test)
+
+```
+Best so far:
+MSE  6487.974 
+        RMSE     Rsquared          MAE 
+8.054796e+04 9.302536e-01 5.571211e+04 
+
+### XGBoost
+```{r}
+varNames <- which(sapply(all, is.numeric))
+all_numVar <- all[, varNames]
+cor_numVar <- cor(all_numVar, use="pairwise.complete.obs") #correlations of all numeric variables
+
+#sort on decreasing correlations with SalePrice
+cor_sorted <- as.matrix(sort(cor_numVar[,'P'], decreasing = TRUE))
+ #select only high corelations
+CorHigh <- names(which(apply(cor_sorted, 1, function(x) abs(x)>0.13)))
+CorHigh
+```
+
+```{r}
+set.seed(101)
+xgbCtrl = trainControl(method = "cv", number = 10)
+
+#testing
+testingReportXGB(method='xgbTree', trControl=xgbCtrl)
+
+xgb.mod = train( P ~ (R+PT+S+YB+L+Sch_0+Sch_1+Sch_2+C_1+C_2+C_3+C_4+Y),  data=data, method='xgbTree', trControl=xgbCtrl)
+xgb.mod 
+xgb.pred = predict(xgb.mod, test)
+```
+
+Best so far:
+MSE  1689.891 
+        RMSE     Rsquared          MAE 
+4.110828e+04 9.841834e-01 2.899982e+04  
+R+PT+S+YB+L+Sch_0+Sch_1+Sch_2+C_1+C_2+C_3+C_4+Y
+
+### Average
+```{r}
+avg.pred = (xgb.pred + lasso.pred)/2
+#avg.pred =  lasso.pred
+#avg2.pred = (xgb.pred * 2 + lasso.pred * 1)/3
+#testingReportPred(pred)
+
+```
+
+
+# Saving
+```{r}
+result = data.frame(Id=testLabels, Predicted=exp(avg.pred))
+write.table(result, "/Users/rboustan/Documents/Stat202/kaggle/submission/submission13.csv",row.names = F, sep = ",")
+```
